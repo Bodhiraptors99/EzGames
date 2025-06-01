@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess & Checkers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS Variables for settings */
+        :root {
+            --piece-animation-speed: 0.2s; /* Default animation speed */
+        }
+
+        /* Custom styles for the game */
+        body {
+            font-family: 'Comic Sans MS', 'Comic Sans', cursive; /* Set font to Comic Sans */
+            background: repeating-conic-gradient(
+                from 0deg,
+                #1a0a2a 0% 12.5%, /* Deep Space Dark Purple */
+                #2a0a3a 12.5% 25%, /* Slightly Lighter Purple */
+                #3a0a4a 25% 37.5%, /* Even Lighter Purple */
+                #4a0a5a 37.5% 50%, /* Darkest Purple */
+                #1a0a2a 50% 62.5%,
+                #2a0a3a 62.5% 75%,
+                #3a0a4a 75% 87.5%,
+                #4a0a5a 87.5% 100%
+            ); /* New cool repeating conic pattern background for deep space feel */
+            background-size: 800% 800%; /* Larger background for smoother animation */
+            animation: background-gradient 60s linear infinite; /* Slower, linear animation for cosmic drift */
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: auto; /* Allow scrolling if content exceeds viewport */
+        }
+
+        /* Background animation for body */
+        @keyframes background-gradient {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 100% 100%; }
+        }
+
+        .game-container {
+            background-color: rgba(0, 0, 0, 0.7); /* Darker, more transparent */
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.6), inset 0 0 15px rgba(139, 92, 246, 0.3); /* Stronger outer glow, subtle inner glow */
+            padding: 2.5rem; /* Slightly more padding */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 90%; /* Max width for responsiveness */
+            width: 600px; /* Max fixed width for desktop */
+            border: 2px solid rgba(139, 92, 246, 0.5); /* Glowing border */
+            backdrop-filter: blur(8px); /* More blur for frosted glass effect */
+            color: #e0e0e0; /* Light text for dark background */
+        }
+
+        /* Chessboard specific styles */
+        #chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 100%;
+            max-width: 550px; /* Slightly increased max-width */
+            aspect-ratio: 1 / 1; /* Ensure square aspect ratio */
+            border: 4px solid #4a0a5a; /* Darker border for board */
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); /* Subtle board glow */
+        }
+
+        /* Checkers board specific styles */
+        #checkersboard {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 100%;
+            max-width: 550px; /* Slightly increased max-width */
+            aspect-ratio: 1 / 1; /* Ensure square aspect ratio */
+            border: 4px solid #4a0a5a; /* Darker border for board */
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); /* Subtle board glow */
+        }
+
+        .square {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(1.5rem, 6vw, 3rem); /* Responsive font size for pieces */
+            cursor: pointer;
+            user-select: none; /* Prevent text selection on pieces */
+            transition: background-color 0.2s ease;
+        }
+
+        /* New Board Colors */
+        .chess-square.light, .checkers-square.light { background-color: #6d28d9; /* Deep Purple */ }
+        .chess-square.dark, .checkers-square.dark { background-color: #1f2937; /* Dark Grey */ }
+
+
+        .piece {
+            font-size: clamp(1.5rem, 6vw, 3rem);
+            line-height: 1;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            transition: transform var(--piece-animation-speed) ease-in-out, box-shadow 0.2s ease;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Chess Pieces - New Colors & Glow */
+        .chess-piece.white {
+            color: #a78bfa; /* Light purple */
+            filter: drop-shadow(0 0 5px #a78bfa); /* Glowing effect */
+            text-shadow: 0 0 8px rgba(255,255,255,0.8);
+        }
+        .chess-piece.black {
+            color: #f0f0f0; /* Bright white */
+            filter: drop-shadow(0 0 5px #f0f0f0); /* Glowing effect */
+            text-shadow: 0 0 8px rgba(0,0,0,0.8);
+        }
+
+        /* Checkers Pieces - New Colors & Orb Look */
+        .checkers-piece {
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(1rem, 4vw, 2rem);
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5); /* Deeper shadow */
+            transition: transform var(--piece-animation-speed) ease-in-out, box-shadow 0.2s ease;
+            position: relative;
+            z-index: 10;
+        }
+        .checkers-piece.white {
+            background-color: #a78bfa; /* Vibrant purple orb */
+            border: 2px solid #8b5cf6;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.7); /* Stronger glow */
+            color: #fff; /* White text for contrast */
+        }
+        .checkers-piece.black {
+            background-color: #f0f0f0; /* Light grey orb */
+            border: 2px solid #ccc;
+            box-shadow: 0 0 15px rgba(240, 240, 240, 0.7); /* Stronger glow */
+            color: #333; /* Dark text for contrast */
+        }
+        .checkers-piece.king::after {
+            content: '★'; /* Star indicator for king piece */
+            position: absolute;
+            font-size: 0.8em; /* Larger star */
+            text-shadow: 0 0 5px rgba(255,255,0,0.8); /* Yellow glow for star */
+        }
+        .checkers-piece.white.king::after { color: #ffe082; } /* Yellowish star on purple */
+        .checkers-piece.black.king::after { color: #ffa000; } /* Orangish star on light grey */
+
+
+        /* When a piece is being animated, it needs to be absolutely positioned */
+        .piece.animating {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 100; /* Bring to front during animation */
+        }
+
+        /* Explode Animation for captured pieces */
+        @keyframes explode {
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+                filter: brightness(1);
+            }
+            50% {
+                transform: scale(1.5) rotate(45deg);
+                opacity: 0.8;
+                filter: brightness(2) drop-shadow(0 0 10px yellow) drop-shadow(0 0 20px orange);
+            }
+            100% {
+                transform: scale(0) rotate(90deg);
+                opacity: 0;
+                filter: brightness(0);
+            }
+        }
+
+        .exploding {
+            animation: explode 0.5s ease-out forwards; /* Apply explode animation */
+        }
+
+
+        .selected {
+            background-color: #8b5cf6 !important; /* Purple for selected square */
+            box-shadow: inset 0 0 0 4px #6d28d9; /* Inner border for selected */
+        }
+
+        .highlight-move {
+            background-color: #4ade80 !important; /* Green for valid moves */
+            position: relative;
+        }
+
+        .highlight-move::after {
+            content: '';
+            position: absolute;
+            width: 25%;
+            height: 25%;
+            background-color: rgba(255, 255, 255, 0.3); /* Lighter dot for highlight */
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .highlight-capture {
+            background-color: #ef4444 !important; /* Red for capture moves */
+            position: relative;
+        }
+
+        .highlight-capture::after {
+            content: '';
+            position: absolute;
+            width: 90%;
+            height: 90%;
+            border: 4px solid rgba(255, 255, 255, 0.5); /* White border for capture */
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .in-check {
+            background-color: #f87171 !important; /* Light red for king in check */
+            box-shadow: inset 0 0 0 5px #dc2626; /* Stronger red border */
+        }
+
+        button {
+            padding: 12px 28px;
+            font-weight: 700;
+            border-radius: 0.75rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            background-color: #4a0a5a; /* Dark purple button */
+            color: #e0e0e0; /* Light text */
+            border: 1px solid #6d28d9; /* Subtle border */
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(139, 92, 246, 0.5); /* Glowing shadow on hover */
+            background-color: #6d28d9; /* Lighter purple on hover */
+        }
+        button:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background-color: #333;
+            border-color: #555;
+            box-shadow: none;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .game-container {
+                padding: 1rem;
+                border-radius: 1rem;
+            }
+            #chessboard, #checkersboard {
+                max-width: 95vw; /* Use viewport width on small screens */
+            }
+            .square {
+                font-size: clamp(1.2rem, 8vw, 2.5rem); /* Adjust font size for smaller screens */
+            }
+            button {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Modal Styles (General for Main Menu and Settings) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.85); /* Very dark overlay */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: rgba(0, 0, 0, 0.9); /* Even darker content background */
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.5); /* Glowing shadow */
+            width: 90%;
+            max-width: 450px;
+            position: relative;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+            text-align: center; /* Center content */
+            border: 1px solid rgba(139, 92, 246, 0.3); /* Subtle glowing border */
+            color: #e0e0e0; /* Light text */
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #a78bfa; /* Light purple close button */
+            transition: color 0.2s ease;
+        }
+        .modal-close-btn:hover {
+            color: #c084fc; /* Lighter purple on hover */
+        }
+        .modal-content button {
+            width: 100%;
+            margin-bottom: 1rem; /* Space out buttons */
+            background-color: #6d28d9; /* Purple buttons in modals */
+            border-color: #8b5cf6;
+        }
+        .modal-content button:hover:not(:disabled) {
+            background-color: #8b5cf6;
+        }
+        .modal-content h2 {
+            color: #a78bfa; /* Light purple heading */
+        }
+        .modal-content label {
+            color: #e0e0e0; /* Light text for labels */
+        }
+        .modal-content select, .modal-content input[type="range"] {
+            background-color: #333;
+            border-color: #555;
+            color: #e0e0e0;
+        }
+        .modal-content select:focus, .modal-content input[type="range"]:focus {
+            border-color: #a78bfa;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <div class="game-container w-full max-w-xl">
+        <h1 id="game-title" class="text-4xl md:text-5xl font-extrabold text-purple-800 mb-6 text-center tracking-tight">
+            Game Board
+        </h1>
+        <div id="status-message" class="mb-6 text-xl font-semibold text-gray-800 text-center">
+            Ready to play!
+        </div>
+
+        <div id="board-container" class="w-full flex justify-center">
+            </div>
+
+        <div class="mt-8 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full justify-center">
+            <button id="new-game-btn" class="bg-purple-600 text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75">
+                New Game
+            </button>
+            <button id="reset-btn" class="bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
+                Reset Board
+            </button>
+            <button id="settings-btn" class="bg-gray-600 text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75">
+                Settings
+            </button>
+            <button id="main-menu-access-btn" class="bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+                Main Menu
+            </button>
+        </div>
+    </div>
+
+    <div id="main-menu-modal" class="modal-overlay active">
+        <div class="modal-content">
+            <h2 class="text-3xl font-bold text-purple-800 mb-6 text-center">Main Menu</h2>
+            <button id="menu-play-chess-btn" class="bg-purple-600 text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75">
+                Play Chess
+            </button>
+            <button id="menu-play-checkers-btn" class="bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75">
+                Play Checkers
+            </button>
+            <button id="menu-continue-game-btn" class="bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed">
+                Continue Game
+            </button>
+            <button id="menu-settings-btn" class="bg-gray-600 text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75">
+                Settings
+            </button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close-btn" id="close-settings-btn">&times;</button>
+            <h2 class="text-3xl font-bold text-purple-800 mb-6 text-center">Settings</h2>
+
+            <div class="mb-6">
+                <label for="ai-difficulty" class="block text-gray-700 text-lg font-semibold mb-2">AI Difficulty:</label>
+                <select id="ai-difficulty" class="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                    <option value="1">Easy</option>
+                    <option value="3" selected>Medium</option>
+                    <option value="5">Hard</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <label for="animation-speed" class="block text-gray-700 text-lg font-semibold mb-2">Piece Animation Speed:</label>
+                <input type="range" id="animation-speed" min="50" max="1000" value="200" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-lg" />
+                <span id="animation-speed-value" class="block text-center text-gray-600 mt-2">0.2s</span>
+            </div>
+
+            <p class="text-sm text-gray-500 text-center">Changes are applied automatically.</p>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript for the Chess & Checkers Game Logic
+
+        // DOM Elements
+        const gameTitleElement = document.getElementById('game-title');
+        const boardContainer = document.getElementById('board-container');
+        const statusMessageElement = document.getElementById('status-message');
+        const newGameBtn = document.getElementById('new-game-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const mainMenuAccessBtn = document.getElementById('main-menu-access-btn'); // New button to open main menu from game
+
+        // Main Menu Elements
+        const mainMenuModal = document.getElementById('main-menu-modal');
+        const menuPlayChessBtn = document.getElementById('menu-play-chess-btn');
+        const menuPlayCheckersBtn = document.getElementById('menu-play-checkers-btn');
+        const menuContinueGameBtn = document.getElementById('menu-continue-game-btn');
+        const menuSettingsBtn = document.getElementById('menu-settings-btn');
+
+        // Settings Modal Elements
+        const settingsModal = document.getElementById('settings-modal');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const aiDifficultySelect = document.getElementById('ai-difficulty');
+        const animationSpeedSlider = document.getElementById('animation-speed');
+        const animationSpeedValueSpan = document.getElementById('animation-speed-value');
+
+        // Global Game State Variables
+        let currentGame = null; // Will hold either chessGame or checkersGame object
+        let gameInProgress = false; // Track if a game has been started
+        let AI_DIFFICULTY_DEPTH = 3;
+        let PIECE_ANIMATION_SPEED_MS = 200;
+        const EXPLODE_ANIMATION_DURATION = 500; // Duration for the explode animation in ms
+
+
+        // --- Helper Functions (Shared) ---
+
+        /**
+         * Generic function to move a piece with animation.
+         * This function handles the visual animation and then updates the board state.
+         * @param {Object} start - {row, col} of the starting square.
+         * @param {Object} end - {row, col} of the ending square.
+         * @param {Array<Array<Object|null>>} currentBoard - The board array.
+         * @param {string} pieceClass - CSS class for the piece element (e.g., 'chess-piece', 'checkers-piece').
+         * @param {Function} updateBoardStateAndRender - Callback to update the board array and re-render after animation.
+         * @param {Object|null} capturedPieceInfo - Optional: {row, col, pieceClass} of the captured piece for explosion.
+         * @returns {Promise<boolean>} Resolves true if move is valid and animated, false otherwise.
+         */
+        function animateAndMovePiece(start, end, currentBoard, pieceClass, updateBoardStateAndRender, capturedPieceInfo = null) {
+            return new Promise(resolve => {
+                const pieceToMove = currentBoard[start.row][start.col];
+                if (!pieceToMove) {
+                    resolve(false);
+                    return;
+                }
+
+                const startSquareElement = document.querySelector(`[data-row="${start.row}"][data-col="${start.col}"]`);
+                const pieceElement = startSquareElement ? startSquareElement.querySelector(`.${pieceClass}`) : null;
+
+                if (!pieceElement) {
+                    console.error("Piece element not found for animation at", start, "with class", pieceClass);
+                    resolve(false);
+                    return;
+                }
+
+                // Handle captured piece animation
+                if (capturedPieceInfo) {
+                    const capturedSquareElement = document.querySelector(`[data-row="${capturedPieceInfo.row}"][data-col="${capturedPieceInfo.col}"]`);
+                    const capturedPieceElement = capturedSquareElement ? capturedSquareElement.querySelector(`.${capturedPieceInfo.pieceClass}`) : null;
+
+                    if (capturedPieceElement) {
+                        capturedPieceElement.classList.add('exploding');
+                        // Remove captured piece from DOM after its explosion animation
+                        setTimeout(() => {
+                            if (capturedPieceElement && capturedPieceElement.parentNode) {
+                                capturedPieceElement.parentNode.removeChild(capturedPieceElement);
+                            }
+                        }, EXPLODE_ANIMATION_DURATION);
+                    }
+                }
+
+                // Calculate the translation needed for animation
+                const startRect = startSquareElement.getBoundingClientRect();
+                const endSquareElement = document.querySelector(`[data-row="${end.row}"][data-col="${end.col}"]`);
+                const endRect = endSquareElement.getBoundingClientRect();
+
+                // Get relative positions within the board container
+                const boardElement = document.getElementById(currentGame.boardId);
+                const boardRect = boardElement.getBoundingClientRect();
+                const startX = startRect.left - boardRect.left;
+                const startY = startRect.top - boardRect.top;
+                const endX = endRect.left - boardRect.left;
+                const endY = endRect.top - boardRect.top;
+
+                const dx = endX - startX;
+                const dy = endY - startY;
+
+                // Apply transform for animation
+                pieceElement.style.transform = `translate(${dx}px, ${dy}px)`;
+                pieceElement.style.transition = `transform ${PIECE_ANIMATION_SPEED_MS / 1000}s ease-in-out`;
+                pieceElement.style.zIndex = '100'; // Bring to front during animation
+
+                setTimeout(() => {
+                    // Reset transform and z-index after animation
+                    pieceElement.style.transform = '';
+                    pieceElement.style.transition = '';
+                    pieceElement.style.zIndex = '';
+
+                    // Now, update the actual board state and re-render
+                    const moveSuccessful = updateBoardStateAndRender(start, end, pieceToMove);
+                    resolve(moveSuccessful);
+                }, PIECE_ANIMATION_SPEED_MS);
+            });
+        }
+
+
+        // --- Chess Game Logic ---
+        const chessGame = {
+            boardId: 'chessboard',
+            board: [],
+            selectedSquare: null,
+            currentPlayer: 'white',
+            validMoves: [],
+            whiteKingPosition: { row: 7, col: 4 },
+            blackKingPosition: { row: 0, col: 4 },
+            isAITurn: false,
+            AI_PLAYER_COLOR: 'black',
+            PIECES: {
+                'white': { 'pawn': '♙', 'rook': '♖', 'knight': '♘', 'bishop': '♗', 'queen': '♕', 'king': '♔' },
+                'black': { 'pawn': '♟', 'rook': '♜', 'knight': '♞', 'bishop': '♝', 'queen': '♛', 'king': '♚' }
+            },
+            PIECE_VALUES: { 'pawn': 10, 'knight': 30, 'bishop': 30, 'rook': 50, 'queen': 90, 'king': 900 },
+
+            initializeBoard: function() {
+                this.board = [
+                    [{ type: 'rook', color: 'black' }, { type: 'knight', color: 'black' }, { type: 'bishop', color: 'black' }, { type: 'queen', color: 'black' }, { type: 'king', color: 'black' }, { type: 'bishop', color: 'black' }, { type: 'knight', color: 'black' }, { type: 'rook', color: 'black' }],
+                    [{ type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }, { type: 'pawn', color: 'black' }],
+                    [null, null, null, null, null, null, null, null],
+                    [null, null, null, null, null, null, null, null],
+                    [null, null, null, null, null, null, null, null],
+                    [null, null, null, null, null, null, null, null],
+                    [{ type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }, { type: 'pawn', color: 'white' }],
+                    [{ type: 'rook', color: 'white' }, { type: 'knight', color: 'white' }, { type: 'bishop', color: 'white' }, { type: 'queen', color: 'white' }, { type: 'king', color: 'white' }, { type: 'bishop', color: 'white' }, { type: 'knight', color: 'white' }, { type: 'rook', color: 'white' }]
+                ];
+                this.currentPlayer = 'white';
+                this.selectedSquare = null;
+                this.validMoves = [];
+                this.whiteKingPosition = { row: 7, col: 4 };
+                this.blackKingPosition = { row: 0, col: 4 };
+                this.isAITurn = false;
+                console.log("Chess board initialized with:", this.board.flat().filter(p => p !== null).length, "pieces.");
+            },
+
+            renderBoard: function() {
+                const chessboardElement = document.getElementById(this.boardId);
+                if (!chessboardElement) return; // Ensure board element exists
+                chessboardElement.innerHTML = '';
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        const square = document.createElement('div');
+                        square.classList.add('square', 'chess-square', (r + c) % 2 === 0 ? 'light' : 'dark');
+                        square.dataset.row = r;
+                        square.dataset.col = c;
+
+                        const piece = this.board[r][c];
+                        if (piece) {
+                            const pieceElement = document.createElement('span');
+                            pieceElement.classList.add('piece', 'chess-piece', piece.color);
+                            pieceElement.textContent = this.PIECES[piece.color][piece.type];
+                            square.appendChild(pieceElement);
+                        }
+
+                        if (this.selectedSquare && this.selectedSquare.row === r && this.selectedSquare.col === c) {
+                            square.classList.add('selected');
+                        }
+                        if (this.validMoves.some(move => move.row === r && move.col === c)) {
+                            const targetPiece = this.board[r][c];
+                            if (targetPiece && targetPiece.color !== this.currentPlayer) {
+                                square.classList.add('highlight-capture');
+                            } else {
+                                square.classList.add('highlight-move');
+                            }
+                        }
+
+                        const pieceOnSquare = this.board[r][c];
+                        if (pieceOnSquare && pieceOnSquare.type === 'king') {
+                            if (pieceOnSquare.color === 'white' && this.isKingInCheck('white', this.board, this.whiteKingPosition, this.blackKingPosition)) {
+                                square.classList.add('in-check');
+                            } else if (pieceOnSquare.color === 'black' && this.isKingInCheck('black', this.board, this.whiteKingPosition, this.blackKingPosition)) {
+                                square.classList.add('in-check');
+                            }
+                        }
+
+                        square.addEventListener('click', this.handleSquareClick.bind(this));
+                        chessboardElement.appendChild(square);
+                    }
+                }
+                this.updateStatusMessage();
+            },
+
+            updateStatusMessage: function() {
+                let message = `${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)} to move.`;
+                if (this.isKingInCheck(this.currentPlayer, this.board, this.whiteKingPosition, this.blackKingPosition)) {
+                    message += ` ${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)} King is in CHECK!`;
+                }
+                statusMessageElement.textContent = message;
+            },
+
+            handleSquareClick: async function(event) {
+                if (this.isAITurn) return;
+
+                const row = parseInt(event.currentTarget.dataset.row);
+                const col = parseInt(event.currentTarget.dataset.col);
+                const clickedPiece = this.board[row][col];
+
+                if (this.selectedSquare) {
+                    if (this.selectedSquare.row === row && this.selectedSquare.col === col) {
+                        this.selectedSquare = null;
+                        this.validMoves = [];
+                        this.renderBoard();
+                        return;
+                    }
+
+                    if (this.validMoves.some(move => move.row === row && move.col === col)) {
+                        let capturedPieceInfo = null;
+                        const targetPiece = this.board[row][col];
+                        if (targetPiece && targetPiece.color !== this.currentPlayer) {
+                            capturedPieceInfo = { row, col, pieceClass: 'chess-piece' };
+                        }
+
+                        const moveSuccessful = await animateAndMovePiece(
+                            this.selectedSquare,
+                            { row, col },
+                            this.board,
+                            'chess-piece',
+                            this.updateBoardStateAndRender.bind(this),
+                            capturedPieceInfo
+                        );
+                        this.selectedSquare = null;
+                        this.validMoves = [];
+
+                        if (moveSuccessful && this.currentPlayer === this.AI_PLAYER_COLOR) {
+                            this.isAITurn = true;
+                            setTimeout(this.makeAIMove.bind(this), PIECE_ANIMATION_SPEED_MS + 500);
+                        } else if (moveSuccessful) {
+                            this.renderBoard();
+                        }
+                    } else {
+                        if (clickedPiece && clickedPiece.color === this.currentPlayer) {
+                            this.selectedSquare = { row, col };
+                            this.validMoves = this.getValidMoves(this.selectedSquare, this.board, this.whiteKingPosition, this.blackKingPosition);
+                        } else {
+                            this.selectedSquare = null;
+                            this.validMoves = [];
+                        }
+                    }
+                } else {
+                    if (clickedPiece && clickedPiece.color === this.currentPlayer) {
+                        this.selectedSquare = { row, col };
+                        this.validMoves = this.getValidMoves(this.selectedSquare, this.board, this.whiteKingPosition, this.blackKingPosition);
+                    }
+                }
+                this.renderBoard();
+            },
+
+            updateBoardStateAndRender: function(start, end, pieceToMove) {
+                const originalTargetPiece = this.board[end.row][end.col];
+                const originalStartPiece = this.board[start.row][start.col];
+                const originalWhiteKingPos = { ...this.whiteKingPosition };
+                const originalBlackKingPos = { ...this.blackKingPosition };
+
+                this.board[end.row][end.col] = pieceToMove;
+                this.board[start.row][start.col] = null;
+
+                if (pieceToMove.type === 'king') {
+                    if (pieceToMove.color === 'white') {
+                        this.whiteKingPosition = end;
+                    } else {
+                        this.blackKingPosition = end;
+                    }
+                }
+
+                if (this.isKingInCheck(pieceToMove.color, this.board, this.whiteKingPosition, this.blackKingPosition)) {
+                    this.board[start.row][start.col] = originalStartPiece;
+                    this.board[end.row][end.col] = originalTargetPiece;
+                    this.whiteKingPosition = originalWhiteKingPos;
+                    this.blackKingPosition = originalBlackKingPos;
+                    statusMessageElement.textContent = `Invalid move! ${pieceToMove.color.charAt(0).toUpperCase() + pieceToMove.color.slice(1)} King would be in check.`;
+                    this.renderBoard();
+                    return false;
+                }
+
+                this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
+                this.renderBoard();
+                return true;
+            },
+
+            getRawMoves: function(start, piece, currentBoard) {
+                let moves = [];
+                switch (piece.type) {
+                    case 'pawn': moves = this.getRawPawnMoves(start, piece.color, currentBoard); break;
+                    case 'rook': moves = this.getRawStraightLineMoves(start, piece.color, currentBoard); break;
+                    case 'knight': moves = this.getRawKnightMoves(start, piece.color, currentBoard); break;
+                    case 'bishop': moves = this.getRawDiagonalMoves(start, piece.color, currentBoard); break;
+                    case 'queen': moves = this.getRawStraightLineMoves(start, piece.color, currentBoard).concat(this.getRawDiagonalMoves(start, piece.color, currentBoard)); break;
+                    case 'king': moves = this.getRawKingMoves(start, piece.color, currentBoard); break;
+                }
+                return moves;
+            },
+
+            getRawPawnMoves: function(start, color, currentBoard) {
+                const moves = [];
+                const direction = color === 'white' ? -1 : 1;
+                const startRow = color === 'white' ? 6 : 1;
+                const newRow = start.row + direction;
+                if (newRow >= 0 && newRow < 8 && !currentBoard[newRow][start.col]) {
+                    moves.push({ row: newRow, col: start.col });
+                    if (start.row === startRow) {
+                        const doubleStepRow = start.row + 2 * direction;
+                        if (!currentBoard[doubleStepRow][start.col]) { moves.push({ row: doubleStepRow, col: start.col }); }
+                    }
+                }
+                const captureCols = [start.col - 1, start.col + 1];
+                captureCols.forEach(c => {
+                    if (c >= 0 && c < 8) {
+                        const targetPiece = currentBoard[newRow]?.[c];
+                        if (targetPiece && targetPiece.color !== color) { moves.push({ row: newRow, col: c }); }
+                    }
+                });
+                return moves;
+            },
+            getRawStraightLineMoves: function(start, color, currentBoard) {
+                const moves = [];
+                const directions = [{ dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }];
+                directions.forEach(dir => {
+                    for (let i = 1; i < 8; i++) {
+                        const newRow = start.row + dir.dr * i;
+                        const newCol = start.col + dir.dc * i;
+                        if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+                        const targetPiece = currentBoard[newRow][newCol];
+                        if (targetPiece) {
+                            if (targetPiece.color !== color) { moves.push({ row: newRow, col: newCol }); }
+                            break;
+                        }
+                        moves.push({ row: newRow, col: newCol });
+                    }
+                });
+                return moves;
+            },
+            getRawDiagonalMoves: function(start, color, currentBoard) {
+                const moves = [];
+                const directions = [{ dr: -1, dc: -1 }, { dr: -1, dc: 1 }, { dr: 1, dc: -1 }, { dr: 1, dc: 1 }];
+                directions.forEach(dir => {
+                    for (let i = 1; i < 8; i++) {
+                        const newRow = start.row + dir.dr * i;
+                        const newCol = start.col + dir.dc * i;
+                        if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+                        const targetPiece = currentBoard[newRow][newCol];
+                        if (targetPiece) {
+                            if (targetPiece.color !== color) { moves.push({ row: newRow, col: newCol }); }
+                            break;
+                        }
+                        moves.push({ row: newRow, col: newCol });
+                    }
+                });
+                return moves;
+            },
+            getRawKnightMoves: function(start, color, currentBoard) {
+                const moves = [];
+                const knightOffsets = [{ dr: -2, dc: -1 }, { dr: -2, dc: 1 }, { dr: -1, dc: -2 }, { dr: -1, dc: 2 }, { dr: 1, dc: -2 }, { dr: 1, dc: 2 }, { dr: 2, dc: -1 }, { dr: 2, dc: 1 }];
+                knightOffsets.forEach(offset => {
+                    const newRow = start.row + offset.dr;
+                    const newCol = start.col + offset.dc;
+                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                        const targetPiece = currentBoard[newRow][newCol];
+                        if (!targetPiece || targetPiece.color !== color) { moves.push({ row: newRow, col: newCol }); }
+                    }
+                });
+                return moves;
+            },
+            getRawKingMoves: function(start, color, currentBoard) {
+                const moves = [];
+                const kingOffsets = [{ dr: -1, dc: -1 }, { dr: -1, dc: 0 }, { dr: -1, dc: 1 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }, { dr: 1, dc: -1 }, { dr: 1, dc: 0 }, { dr: 1, dc: 1 }];
+                kingOffsets.forEach(offset => {
+                    const newRow = start.row + offset.dr;
+                    const newCol = start.col + offset.dc;
+                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                        const targetPiece = currentBoard[newRow][newCol];
+                        if (!targetPiece || targetPiece.color !== color) { moves.push({ row: newRow, col: newCol }); }
+                    }
+                });
+                return moves;
+            },
+
+            isSquareAttacked: function(row, col, attackingColor, currentBoard) {
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        const piece = currentBoard[r][c];
+                        if (piece && piece.color === attackingColor) {
+                            const rawMoves = this.getRawMoves({ row: r, col: c }, piece, currentBoard);
+                            if (rawMoves.some(move => move.row === row && move.col === col)) { return true; }
+                        }
+                    }
+                }
+                return false;
+            },
+
+            isKingInCheck: function(kingColor, currentBoard, currentWhiteKingPos, currentBlackKingPos) {
+                const kingPos = kingColor === 'white' ? currentWhiteKingPos : currentBlackKingPos;
+                const attackingColor = kingColor === 'white' ? 'black' : 'white';
+                return this.isSquareAttacked(kingPos.row, kingPos.col, attackingColor, currentBoard);
+            },
+
+            getValidMoves: function(start, currentBoard, currentWhiteKingPos, currentBlackKingPos) {
+                const piece = currentBoard[start.row][start.col];
+                if (!piece) { return []; }
+                const rawMoves = this.getRawMoves(start, piece, currentBoard);
+                const filteredMoves = rawMoves.filter(end => {
+                    const simulatedBoard = JSON.parse(JSON.stringify(currentBoard));
+                    const simulatedWhiteKingPos = { ...currentWhiteKingPos };
+                    const simulatedBlackKingPos = { ...currentBlackKingPos };
+                    const pieceToMove = simulatedBoard[start.row][start.col];
+                    simulatedBoard[end.row][end.col] = pieceToMove;
+                    simulatedBoard[start.row][start.col] = null;
+                    if (pieceToMove.type === 'king') {
+                        if (pieceToMove.color === 'white') { simulatedWhiteKingPos.row = end.row; simulatedWhiteKingPos.col = end.col; }
+                        else { simulatedBlackKingPos.row = end.row; simulatedBlackKingPos.col = end.col; }
+                    }
+                    return !this.isKingInCheck(piece.color, simulatedBoard, simulatedWhiteKingPos, simulatedBlackKingPos);
+                });
+                return filteredMoves;
+            },
+
+            evaluateBoard: function(currentBoard) {
+                let score = 0;
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        const piece = currentBoard[r][c];
+                        if (piece) {
+                            const pieceValue = this.PIECE_VALUES[piece.type];
+                            if (piece.color === 'white') { score += pieceValue; }
+                            else { score -= pieceValue; }
+                        }
+                    }
+                }
+                return score;
+            },
+
+            minimax: function(currentBoard, depth, isMaximizingPlayer, currentWhiteKingPos, currentBlackKingPos) {
+                if (depth === 0) { return this.evaluateBoard(currentBoard); }
+                const currentPlayerForMinimax = isMaximizingPlayer ? this.AI_PLAYER_COLOR : (this.AI_PLAYER_COLOR === 'white' ? 'black' : 'white');
+                let allLegalMoves = [];
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        const piece = currentBoard[r][c];
+                        if (piece && piece.color === currentPlayerForMinimax) {
+                            const pieceMoves = this.getValidMoves({ row: r, col: c }, currentBoard, currentWhiteKingPos, currentBlackKingPos);
+                            pieceMoves.forEach(move => allLegalMoves.push({ start: { row: r, col: c }, end: move }));
+                        }
+                    }
+                }
+                if (allLegalMoves.length === 0) { return this.evaluateBoard(currentBoard); }
+
+                if (isMaximizingPlayer) {
+                    let minEval = Infinity;
+                    for (const move of allLegalMoves) {
+                        const newBoard = JSON.parse(JSON.stringify(currentBoard));
+                        const pieceToMove = newBoard[move.start.row][move.start.col];
+                        newBoard[move.end.row][move.end.col] = pieceToMove;
+                        newBoard[move.start.row][move.start.col] = null;
+                        let nextWhiteKingPos = { ...currentWhiteKingPos };
+                        let nextBlackKingPos = { ...currentBlackKingPos };
+                        if (pieceToMove.type === 'king') {
+                            if (pieceToMove.color === 'white') { nextWhiteKingPos = move.end; }
+                            else { nextBlackKingPos = move.end; }
+                        }
+                        const evaluation = this.minimax(newBoard, depth - 1, false, nextWhiteKingPos, nextBlackKingPos);
+                        minEval = Math.min(minEval, evaluation);
+                    }
+                    return minEval;
+                } else {
+                    let maxEval = -Infinity;
+                    for (const move of allLegalMoves) {
+                        const newBoard = JSON.parse(JSON.stringify(currentBoard));
+                        const pieceToMove = newBoard[move.start.row][move.start.col];
+                        newBoard[move.end.row][move.end.col] = pieceToMove;
+                        newBoard[move.start.row][move.start.col] = null;
+                        let nextWhiteKingPos = { ...currentWhiteKingPos };
+                        let nextBlackKingPos = { ...currentBlackKingPos };
+                        if (pieceToMove.type === 'king') {
+                            if (pieceToMove.color === 'white') { nextWhiteKingPos = move.end; }
+                            else { nextBlackKingPos = move.end; }
+                        }
+                        const evaluation = this.minimax(newBoard, depth - 1, true, nextWhiteKingPos, nextBlackKingPos);
+                        maxEval = Math.max(maxEval, evaluation);
+                    }
+                    return maxEval;
+                }
+            },
+
+            findBestMove: function() {
+                let bestMove = null;
+                let bestEval = Infinity;
+                const allLegalMoves = [];
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        const piece = this.board[r][c];
+                        if (piece && piece.color === this.AI_PLAYER_COLOR) {
+                            const pieceMoves = this.getValidMoves({ row: r, col: c }, this.board, this.whiteKingPosition, this.blackKingPosition);
+                            pieceMoves.forEach(move => allLegalMoves.push({ start: { row: r, col: c }, end: move }));
+                        }
+                    }
+                }
+                if (allLegalMoves.length === 0) { console.log("AI has no legal moves."); return null; }
+
+                for (const move of allLegalMoves) {
+                    const newBoard = JSON.parse(JSON.stringify(this.board));
+                    const pieceToMove = newBoard[move.start.row][move.start.col];
+                    newBoard[move.end.row][move.end.col] = pieceToMove;
+                    newBoard[move.start.row][move.start.col] = null;
+                    let nextWhiteKingPos = { ...this.whiteKingPosition };
+                    let nextBlackKingPos = { ...this.blackKingPosition };
+                    if (pieceToMove.type === 'king') {
+                        if (pieceToMove.color === 'white') { nextWhiteKingPos = move.end; }
+                        else { nextBlackKingPos = move.end; }
+                    }
+                    const evaluation = this.minimax(newBoard, AI_DIFFICULTY_DEPTH - 1, false, nextWhiteKingPos, nextBlackKingPos);
+                    if (evaluation < bestEval) {
+                        bestEval = evaluation;
+                        bestMove = move;
+                    }
+                }
+                return bestMove;
+            },
+
+            makeAIMove: async function() {
+                statusMessageElement.textContent = "AI (Black) is thinking...";
+                this.disableInteraction();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const move = this.findBestMove();
+                if (move) {
+                    let capturedPieceInfo = null;
+                    const targetPiece = this.board[move.end.row][move.end.col];
+                    if (targetPiece && targetPiece.color !== this.AI_PLAYER_COLOR) {
+                        capturedPieceInfo = { row: move.end.row, col: move.end.col, pieceClass: 'chess-piece' };
+                    }
+
+                    const moveSuccessful = await animateAndMovePiece(
+                        move.start,
+                        move.end,
+                        this.board,
+                        'chess-piece',
+                        this.updateBoardStateAndRender.bind(this),
+                        capturedPieceInfo
+                    );
+                    if (moveSuccessful) { /* renderBoard is called in updateBoardStateAndRender */ }
+                    else { console.error("AI attempted an invalid move after calculation."); }
+                } else {
+                    console.log("AI has no legal moves. Game might be over (checkmate/stalemate).");
+                    statusMessageElement.textContent = "AI has no legal moves. Game over!";
+                }
+                this.isAITurn = false;
+                this.enableInteraction();
+                this.renderBoard();
+            },
+
+            disableInteraction: function() {
+                document.getElementById(this.boardId).style.pointerEvents = 'none';
+                newGameBtn.disabled = true;
+                resetBtn.disabled = true;
+                settingsBtn.disabled = true;
+                mainMenuAccessBtn.disabled = true;
+            },
+
+            enableInteraction: function() {
+                document.getElementById(this.boardId).style.pointerEvents = 'auto';
+                newGameBtn.disabled = false;
+                resetBtn.disabled = false;
+                settingsBtn.disabled = false;
+                mainMenuAccessBtn.disabled = false;
+            }
+        };
+
+        // --- Checkers Game Logic ---
+        const checkersGame = {
+            boardId: 'checkersboard',
+            board: [],
+            selectedSquare: null,
+            currentPlayer: 'white',
+            validMoves: [],
+            mustCapture: false, // Flag for mandatory captures
+            lastJumpedPiece: null, // To track multi-jumps
+            PIECES: {
+                'white': { 'pawn': '', 'king': '★' }, // Checkers pieces are circles, '★' for king
+                'black': { 'pawn': '', 'king': '★' }
+            },
+            AI_PLAYER_COLOR: 'black', // Define AI player color for Checkers
+
+            initializeBoard: function() {
+                this.board = Array(8).fill(null).map(() => Array(8).fill(null));
+                for (let r = 0; r < 3; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        if ((r + c) % 2 !== 0) { // Dark squares
+                            this.board[r][c] = { type: 'pawn', color: 'black' };
+                        }
+                    }
+                }
+                for (let r = 5; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        if ((r + c) % 2 !== 0) { // Dark squares
+                            this.board[r][c] = { type: 'pawn', color: 'white' };
+                        }
+                    }
+                }
+                this.currentPlayer = 'white';
+                this.selectedSquare = null;
+                this.validMoves = [];
+                this.mustCapture = false;
+                this.lastJumpedPiece = null;
+                this.isAITurn = false; // Initialize AI turn flag
+                console.log("Checkers board initialized with:", this.board.flat().filter(p => p !== null).length, "pieces.");
+            },
+
+            renderBoard: function() {
+                const checkersboardElement = document.getElementById(this.boardId);
+                if (!checkersboardElement) return;
+                checkersboardElement.innerHTML = '';
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        const square = document.createElement('div');
+                        square.classList.add('square', 'checkers-square', (r + c) % 2 === 0 ? 'light' : 'dark');
+                        square.dataset.row = r;
+                        square.dataset.col = c;
+
+                        const piece = this.board[r][c];
+                        if (piece) {
+                            const pieceElement = document.createElement('span');
+                            pieceElement.classList.add('checkers-piece', piece.color);
+                            if (piece.type === 'king') {
+                                pieceElement.classList.add('king');
+                                pieceElement.textContent = this.PIECES[piece.color][piece.type]; // Set star content
+                            }
+                            square.appendChild(pieceElement);
+                        }
+
+                        if (this.selectedSquare && this.selectedSquare.row === r && this.selectedSquare.col === c) {
+                            square.classList.add('selected');
+                        }
+                        if (this.validMoves.some(move => move.row === r && move.col === c)) {
+                            // Checkers captures always land on empty square after jump, so no targetPiece check needed for highlight-capture
+                            square.classList.add('highlight-move'); // Use highlight-move for valid jump landings
+                        }
+
+                        square.addEventListener('click', this.handleSquareClick.bind(this));
+                        checkersboardElement.appendChild(square);
+                    }
+                }
+                this.updateStatusMessage();
+            },
+
+            updateStatusMessage: function() {
+                let message = `${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)} to move.`;
+                if (this.mustCapture) {
+                    message += " (Mandatory Capture!)";
+                }
+                statusMessageElement.textContent = message;
+            },
+
+            handleSquareClick: async function(event) {
+                if (this.isAITurn) return;
+
+                const row = parseInt(event.currentTarget.dataset.row);
+                const col = parseInt(event.currentTarget.dataset.col);
+                const clickedPiece = this.board[row][col];
+
+                // If multi-jump is active, only allow clicking the last jumped piece
+                if (this.lastJumpedPiece && (this.lastJumpedPiece.row !== row || this.lastJumpedPiece.col !== col)) {
+                    // If clicking a different piece or a non-valid square while multi-jumping, ignore
+                    if (!this.validMoves.some(move => move.row === row && move.col === col)) {
+                        return;
+                    }
+                }
+
+                if (this.selectedSquare) {
+                    if (this.selectedSquare.row === row && this.selectedSquare.col === col && !this.mustCapture) {
+                        // Deselect unless a capture is mandatory (then must re-select same piece to jump)
+                        this.selectedSquare = null;
+                        this.validMoves = [];
+                        this.renderBoard();
+                        return;
+                    }
+
+                    if (this.validMoves.some(move => move.row === row && move.col === col)) {
+                        let capturedPieceInfo = null;
+                        const potentialJumpedRow = (this.selectedSquare.row + row) / 2;
+                        const potentialJumpedCol = (this.selectedSquare.col + col) / 2;
+
+                        // Check if it's a jump and if there's a piece to capture
+                        if (Math.abs(this.selectedSquare.row - row) === 2 && this.board[potentialJumpedRow][potentialJumpedCol]) {
+                            capturedPieceInfo = { row: potentialJumpedRow, col: potentialJumpedCol, pieceClass: 'checkers-piece' };
+                        }
+
+                        // Valid move/jump
+                        const moveSuccessful = await animateAndMovePiece(
+                            this.selectedSquare,
+                            { row, col },
+                            this.board,
+                            'checkers-piece',
+                            this.updateBoardStateAndRender.bind(this),
+                            capturedPieceInfo
+                        );
+
+                        if (moveSuccessful) {
+                            // After move, check for further jumps if it was a capture
+                            if (moveSuccessful.isJump) {
+                                const furtherJumps = this.getValidMoves({ row, col }, this.board, true); // Check for jumps from new position
+                                if (furtherJumps.length > 0) {
+                                    this.selectedSquare = { row, col }; // Keep piece selected for multi-jump
+                                    this.validMoves = furtherJumps;
+                                    this.mustCapture = true;
+                                    this.lastJumpedPiece = { row, col };
+                                    this.renderBoard();
+                                    return; // Stay on current player's turn for multi-jump
+                                }
+                            }
+                            // If no further jumps or not a jump, end turn
+                            this.selectedSquare = null;
+                            this.validMoves = [];
+                            this.mustCapture = false;
+                            this.lastJumpedPiece = null;
+
+                            if (this.currentPlayer === this.AI_PLAYER_COLOR) {
+                                this.isAITurn = true;
+                                setTimeout(this.makeAIMove.bind(this), PIECE_ANIMATION_SPEED_MS + 500);
+                            }
+                        }
+                    } else {
+                        // Not a valid move for the selected piece, try to select new piece
+                        if (clickedPiece && clickedPiece.color === this.currentPlayer && !this.mustCapture) {
+                            this.selectedSquare = { row, col };
+                            this.validMoves = this.getValidMoves(this.selectedSquare, this.board, false); // Check for initial moves
+                            this.mustCapture = this.validMoves.some(move => move.isJump);
+                            // If mandatory capture, filter validMoves to only include jumps
+                            if (this.mustCapture) {
+                                this.validMoves = this.validMoves.filter(move => move.isJump);
+                            }
+                        } else if (this.mustCapture && this.selectedSquare.row === row && this.selectedSquare.col === col) {
+                             // Re-clicked same piece during mandatory capture, allow re-selection
+                             this.validMoves = this.getValidMoves(this.selectedSquare, this.board, true); // Only jumps from this piece
+                        } else {
+                            this.selectedSquare = null;
+                            this.validMoves = [];
+                            this.mustCapture = false; // Reset if deselected
+                            this.lastJumpedPiece = null;
+                        }
+                    }
+                } else {
+                    // No piece selected, try to select one
+                    if (clickedPiece && clickedPiece.color === this.currentPlayer) {
+                        this.selectedSquare = { row, col };
+                        this.validMoves = this.getValidMoves(this.selectedSquare, this.board, false);
+                        this.mustCapture = this.validMoves.some(move => move.isJump);
+                        if (this.mustCapture) {
+                            this.validMoves = this.validMoves.filter(move => move.isJump);
+                        }
+                    }
+                }
+                this.renderBoard();
+            },
+
+            updateBoardStateAndRender: function(start, end, pieceToMove) {
+                let isJump = false;
+                // Calculate if it was a jump (distance > 1)
+                if (Math.abs(start.row - end.row) === 2) {
+                    isJump = true;
+                    const jumpedRow = (start.row + end.row) / 2;
+                    const jumpedCol = (start.col + end.col) / 2;
+                    this.board[jumpedRow][jumpedCol] = null; // Remove captured piece
+                }
+
+                this.board[end.row][end.col] = pieceToMove;
+                this.board[start.row][start.col] = null;
+
+                // Check for kinging
+                if (pieceToMove.type === 'pawn') {
+                    if ((pieceToMove.color === 'white' && end.row === 0) || (pieceToMove.color === 'black' && end.row === 7)) {
+                        this.board[end.row][end.col].type = 'king';
+                        console.log(`${pieceToMove.color} pawn kinged at ${end.row},${end.col}`);
+                    }
+                }
+
+                // Only switch player if not a jump or no further jumps
+                if (!isJump || this.getValidMoves(end, this.board, true).length === 0) {
+                    this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
+                }
+
+                this.renderBoard();
+                return { success: true, isJump: isJump };
+            },
+
+            getValidMoves: function(start, currentBoard, onlyJumps = false) {
+                const moves = [];
+                const piece = currentBoard[start.row][start.col];
+                if (!piece) return [];
+
+                const directions = piece.type === 'king' ?
+                    [{ dr: -1, dc: -1 }, { dr: -1, dc: 1 }, { dr: 1, dc: -1 }, { dr: 1, dc: 1 }] : // King: all 4 diagonals
+                    (piece.color === 'white' ?
+                        [{ dr: -1, dc: -1 }, { dr: -1, dc: 1 }] : // White pawn: forward diagonals
+                        [{ dr: 1, dc: -1 }, { dr: 1, dc: 1 }]); // Black pawn: forward diagonals
+
+                directions.forEach(dir => {
+                    const newRow = start.row + dir.dr;
+                    const newCol = start.col + dir.dc;
+                    const jumpRow = start.row + 2 * dir.dr;
+                    const jumpCol = start.col + 2 * dir.dc;
+
+                    // Check for jumps
+                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                        const targetPiece = currentBoard[newRow][newCol];
+                        if (targetPiece && targetPiece.color !== piece.color) { // Opponent's piece
+                            if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 && !currentBoard[jumpRow][jumpCol]) { // Landing square is empty
+                                moves.push({ row: jumpRow, col: jumpCol, isJump: true, captured: { row: newRow, col: newCol } });
+                            }
+                        }
+                    }
+
+                    // Check for regular moves (only if not forced to capture)
+                    if (!onlyJumps && !this.mustCapture) {
+                        if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && !currentBoard[newRow][newCol]) {
+                            if (piece.type === 'pawn') { // Pawns only move one step
+                                moves.push({ row: newRow, col: newCol, isJump: false });
+                            } else if (piece.type === 'king') { // Kings can move multiple steps (simplified)
+                                // For multi-step king moves, ensure path is clear
+                                let pathClear = true;
+                                for (let i = 1; i <= Math.max(Math.abs(dir.dr), Math.abs(dir.dc)); i++) {
+                                    const intermediateRow = start.row + dir.dr * i;
+                                    const intermediateCol = start.col + dir.dc * i;
+                                    if (intermediateRow === newRow && intermediateCol === newCol) continue; // Skip target square
+                                    if (currentBoard[intermediateRow]?.[intermediateCol]) {
+                                        pathClear = false;
+                                        break;
+                                    }
+                                }
+                                if (pathClear) {
+                                    moves.push({ row: newRow, col: newCol, isJump: false });
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // If there are any jumps available, only return jumps (mandatory capture)
+                const jumpMoves = moves.filter(move => move.isJump);
+                if (jumpMoves.length > 0) {
+                    return jumpMoves;
+                } else if (onlyJumps) { // If specifically asked for only jumps and none found
+                    return [];
+                }
+                return moves;
+            },
+
+            // AI for Checkers (Very Basic: Prioritize captures, otherwise random legal move)
+            findBestMove: function() {
+                const allLegalMoves = [];
+                let captureMoves = [];
+
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        const piece = this.board[r][c];
+                        if (piece && piece.color === this.AI_PLAYER_COLOR) {
+                            const pieceMoves = this.getValidMoves({ row: r, col: c }, this.board, false); // Get all moves
+                            pieceMoves.forEach(move => {
+                                const fullMove = { start: { row: r, col: c }, end: move };
+                                allLegalMoves.push(fullMove);
+                                if (move.isJump) {
+                                    captureMoves.push(fullMove);
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // Prioritize captures
+                if (captureMoves.length > 0) {
+                    // For multi-jumps, AI needs to continue with the same piece
+                    if (this.lastJumpedPiece) {
+                        const furtherJumps = captureMoves.filter(m => m.start.row === this.lastJumpedPiece.row && m.start.col === this.lastJumpedPiece.col);
+                        if (furtherJumps.length > 0) {
+                            return furtherJumps[Math.floor(Math.random() * furtherJumps.length)]; // Pick random among current piece's jumps
+                        }
+                    }
+                    return captureMoves[Math.floor(Math.random() * captureMoves.length)]; // Pick random capture
+                } else if (allLegalMoves.length > 0) {
+                    // If no captures, pick a random non-capture move
+                    const nonCaptureMoves = allLegalMoves.filter(move => !move.end.isJump);
+                    if (nonCaptureMoves.length > 0) {
+                        return nonCaptureMoves[Math.floor(Math.random() * nonCaptureMoves.length)];
+                    }
+                    // Fallback in case only jumps were generated but not taken (shouldn't happen with mandatory capture logic)
+                    return allLegalMoves[Math.floor(Math.random() * allLegalMoves.length)];
+                }
+                return null; // No legal moves
+            },
+
+            makeAIMove: async function() {
+                statusMessageElement.textContent = "AI (Black) is thinking...";
+                this.disableInteraction();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                let move = this.findBestMove();
+                let multiJumpActive = false;
+
+                do {
+                    if (!move) {
+                        console.log("AI has no legal moves. Game over!");
+                        statusMessageElement.textContent = "AI has no legal moves. Game over!";
+                        break;
+                    }
+
+                    let capturedPieceInfo = null;
+                    if (move.end.isJump) {
+                        capturedPieceInfo = { row: move.end.captured.row, col: move.end.captured.col, pieceClass: 'checkers-piece' };
+                    }
+
+                    const moveSuccessfulResult = await animateAndMovePiece(
+                        move.start,
+                        move.end,
+                        this.board,
+                        'checkers-piece',
+                        this.updateBoardStateAndRender.bind(this),
+                        capturedPieceInfo
+                    );
+
+                    if (moveSuccessfulResult && moveSuccessfulResult.isJump) {
+                        const furtherJumps = this.getValidMoves(move.end, this.board, true);
+                        if (furtherJumps.length > 0) {
+                            this.lastJumpedPiece = move.end; // Set for next AI iteration
+                            this.mustCapture = true;
+                            move = this.findBestMove(); // Find next jump for same piece
+                            multiJumpActive = true;
+                            await new Promise(resolve => setTimeout(resolve, PIECE_ANIMATION_SPEED_MS + 300)); // Short pause between jumps
+                        } else {
+                            multiJumpActive = false;
+                        }
+                    } else {
+                        multiJumpActive = false;
+                    }
+
+                } while (multiJumpActive); // Continue looping if multi-jump is active
+
+                this.isAITurn = false;
+                this.mustCapture = false; // Reset after AI turn
+                this.lastJumpedPiece = null;
+                this.enableInteraction();
+                this.renderBoard();
+            },
+
+            disableInteraction: function() {
+                document.getElementById(this.boardId).style.pointerEvents = 'none';
+                newGameBtn.disabled = true;
+                resetBtn.disabled = true;
+                settingsBtn.disabled = true;
+                mainMenuAccessBtn.disabled = true;
+            },
+
+            enableInteraction: function() {
+                document.getElementById(this.boardId).style.pointerEvents = 'auto';
+                newGameBtn.disabled = false;
+                resetBtn.disabled = false;
+                settingsBtn.disabled = false;
+                mainMenuAccessBtn.disabled = false;
+            }
+        };
+
+
+        // --- Game Management (Global) ---
+
+        function startGame(gameType) {
+            console.log(`Attempting to start ${gameType} game.`);
+            // Clear previous board and its event listeners to prevent memory leaks/ghost interactions
+            const existingChessboard = document.getElementById(chessGame.boardId);
+            if (existingChessboard) {
+                existingChessboard.remove();
+                console.log("Removed existing chessboard element.");
+            }
+            const existingCheckersboard = document.getElementById(checkersGame.boardId);
+            if (existingCheckersboard) {
+                existingCheckersboard.remove();
+                console.log("Removed existing checkersboard element.");
+            }
+
+            if (gameType === 'chess') {
+                currentGame = chessGame;
+                gameTitleElement.textContent = 'Simple Chess';
+                const boardElement = document.createElement('div');
+                boardElement.id = chessGame.boardId;
+                boardContainer.appendChild(boardElement);
+                console.log("Created chessboard element.");
+            } else if (gameType === 'checkers') {
+                currentGame = checkersGame;
+                gameTitleElement.textContent = 'Simple Checkers';
+                const boardElement = document.createElement('div');
+                boardElement.id = checkersGame.boardId;
+                boardContainer.appendChild(boardElement);
+                console.log("Created checkersboard element.");
+            } else {
+                console.error("Invalid game type:", gameType);
+                return;
+            }
+
+            currentGame.initializeBoard();
+            gameInProgress = true;
+            mainMenuModal.classList.remove('active'); // Close main menu
+            currentGame.enableInteraction(); // Enable interaction for the chosen game
+            currentGame.renderBoard();
+            updateMainMenuButtons(); // Update menu buttons after game starts
+            console.log(`Successfully started ${gameType} game.`);
+        }
+
+        function resetCurrentGame() {
+            if (currentGame) {
+                currentGame.initializeBoard();
+                currentGame.renderBoard();
+                currentGame.enableInteraction();
+            }
+        }
+
+        // --- Main Menu Logic ---
+        function openMainMenu() {
+            mainMenuModal.classList.add('active');
+            updateMainMenuButtons();
+            // Disable game interaction when main menu is open
+            if (currentGame) {
+                currentGame.disableInteraction();
+            }
+        }
+
+        function closeMainMenu() {
+            mainMenuModal.classList.remove('active');
+            // Re-enable game interaction if a game is in progress
+            if (gameInProgress && currentGame) {
+                currentGame.enableInteraction();
+            }
+        }
+
+        function updateMainMenuButtons() {
+            if (gameInProgress) {
+                menuContinueGameBtn.disabled = false;
+            } else {
+                menuContinueGameBtn.disabled = true;
+            }
+        }
+
+        // --- Settings Modal Logic ---
+        function openSettingsMenu() {
+            settingsModal.classList.add('active');
+            // Disable game interaction when settings is open
+            if (currentGame) {
+                currentGame.disableInteraction();
+            }
+        }
+
+        function closeSettingsMenu() {
+            settingsModal.classList.remove('active');
+            // Re-enable game interaction if a game is in progress
+            if (gameInProgress && currentGame) {
+                currentGame.enableInteraction();
+            }
+        }
+
+        // Function to load initial settings (e.g., from local storage or defaults)
+        function loadSettings() {
+            // Load AI Difficulty
+            const savedAIDifficulty = localStorage.getItem('aiDifficulty');
+            if (savedAIDifficulty) {
+                AI_DIFFICULTY_DEPTH = parseInt(savedAIDifficulty);
+                aiDifficultySelect.value = savedAIDifficulty;
+            } else {
+                aiDifficultySelect.value = AI_DIFFICULTY_DEPTH; // Set default in UI
+            }
+            aiDifficultySelect.addEventListener('change', (event) => {
+                AI_DIFFICULTY_DEPTH = parseInt(event.target.value);
+                localStorage.setItem('aiDifficulty', AI_DIFFICULTY_DEPTH);
+                console.log("AI Difficulty set to depth:", AI_DIFFICULTY_DEPTH);
+            });
+
+
+            // Load Animation Speed
+            const savedAnimationSpeed = localStorage.getItem('animationSpeed');
+            if (savedAnimationSpeed) {
+                PIECE_ANIMATION_SPEED_MS = parseInt(savedAnimationSpeed);
+                animationSpeedSlider.value = savedAnimationSpeed;
+            } else {
+                animationSpeedSlider.value = PIECE_ANIMATION_SPEED_MS; // Set default in UI
+            }
+            // Trigger initial display update for animation speed
+            animationSpeedSlider.dispatchEvent(new Event('input'));
+
+            animationSpeedSlider.addEventListener('input', (event) => {
+                PIECE_ANIMATION_SPEED_MS = parseInt(event.target.value);
+                const speedSeconds = (PIECE_ANIMATION_SPEED_MS / 1000).toFixed(1);
+                animationSpeedValueSpan.textContent = `${speedSeconds}s`;
+                document.documentElement.style.setProperty('--piece-animation-speed', `${PIECE_ANIMATION_SPEED_MS / 1000}s`);
+                localStorage.setItem('animationSpeed', PIECE_ANIMATION_SPEED_MS);
+                console.log("Piece Animation Speed set to:", PIECE_ANIMATION_SPEED_MS, "ms");
+            });
+        }
+
+
+        // --- Event Listeners (Global) ---
+        newGameBtn.addEventListener('click', () => {
+            if (currentGame) {
+                startGame(currentGame.boardId === 'chessboard' ? 'chess' : 'checkers'); // Restart current game type
+            } else {
+                openMainMenu(); // If no game active, go to main menu to choose
+            }
+        });
+        resetBtn.addEventListener('click', resetCurrentGame);
+        settingsBtn.addEventListener('click', openSettingsMenu);
+        mainMenuAccessBtn.addEventListener('click', openMainMenu);
+
+
+        // Main Menu Button Listeners
+        menuPlayChessBtn.addEventListener('click', () => {
+            console.log("Play Chess button clicked.");
+            startGame('chess');
+        });
+        menuPlayCheckersBtn.addEventListener('click', () => {
+            console.log("Play Checkers button clicked.");
+            startGame('checkers');
+        });
+        menuContinueGameBtn.addEventListener('click', closeMainMenu);
+        menuSettingsBtn.addEventListener('click', () => {
+            closeMainMenu();
+            openSettingsMenu();
+        });
+
+        // Settings Modal Button Listeners
+        closeSettingsBtn.addEventListener('click', closeSettingsMenu);
+
+        // Close modals if clicked outside content
+        settingsModal.addEventListener('click', (event) => {
+            if (event.target === settingsModal) { closeSettingsMenu(); }
+        });
+        mainMenuModal.addEventListener('click', (event) => {
+            if (event.target === mainMenuModal) { closeMainMenu(); }
+        });
+
+
+        // Initial setup on page load
+        window.onload = () => {
+            loadSettings(); // Load settings first
+            openMainMenu(); // Open main menu on load
+            // Game will start when user clicks "Start New Game" from menu
+        };
+
+    </script>
+</body>
+</html>
